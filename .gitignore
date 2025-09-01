@@ -31,3 +31,4 @@ Thumbs.db
 #Specifiche
 check_db.py
 web.config
+/staticfiles/
