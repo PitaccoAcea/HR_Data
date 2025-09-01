@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from main.views import home  # importa la view "home" dall'app main
+from main.views import debug_user, home  # importa la view "home" dall'app main
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),  # aggiunge la view "home" all'URL root
+    path("debug-user/", debug_user),
 ]
