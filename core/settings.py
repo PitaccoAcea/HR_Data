@@ -73,16 +73,22 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
-    # WhiteNoise va subito dopo SecurityMiddleware
-    "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+
+    # 👇 Ordine corretto: prima AuthenticationMiddleware...
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+    # ...poi RemoteUserMiddleware
+    'django.contrib.auth.middleware.RemoteUserMiddleware',
+
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
+
 
 ROOT_URLCONF = "core.urls"
 
@@ -148,5 +154,24 @@ STATIC_URL = os.environ.get("STATIC_URL", "static/")
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+# Solo in sviluppo: dove Django va a cercare i file statici prima di copiarli in staticfiles/
+if os.environ.get("DJANGO_ENV", "dev") == "dev":
+    STATICFILES_DIRS = [
+        BASE_DIR / "main" / "static",
+    ]
+
 # === Campo ID di default per i modelli ===
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Directory aggiuntiva per i template di progetto (oltre a quelli delle app)
+TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
+
+# Statici: oltre a STATIC_ROOT (per collectstatic) dichiariamo la sorgente locale
+STATIC_URL = os.environ.get("STATIC_URL", "static/")
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]  # <--- cartella sorgente per CSS/JS/immagini di progetto
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.RemoteUserBackend',
+]

@@ -4,4 +4,5 @@ from django.shortcuts import render
 from django.http import HttpResponse
 
 def home(request):
-    return HttpResponse("HR_Data è online ✅")
+    #return HttpResponse("HR_Data è online ✅")
+    return render(request, "main/home.html")

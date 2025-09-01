@@ -1,0 +1,161 @@
+/* ==========================================================================
+   HR_Data · Tema minimale stile "intranet"
+   - Header bianco con logo a sinistra e titolo
+   - Barra teal a tutta larghezza con breadcrumb/menu e nome utente a destra
+   - Variabili per brand e font (Calibri di default)
+   ========================================================================== */
+
+/* ============= Brand & Font (personalizza qui) ========================== */
+:root{
+  --brand-teal: #06A2A2;             /* colore principale della barra */
+  --brand-teal-hover: #058e8e;       /* hover leggermente più scuro */
+  --text: #1b1f23;                   /* colore testo predefinito */
+  --muted: #6b7a85;                  /* testo attenuato */
+  --header-border: #e7eef3;          /* bordino sotto l’header bianco */
+  --font-family: Calibri, "Segoe UI", Roboto, Arial, sans-serif;
+  --brand-primary: #06A2A2;   /* blu brand */
+  --brand-secondary: #6b7a85; /* azzurro accento */
+
+}
+
+html, body{
+  height: 100%;
+}
+
+body{
+  font-family: var(--font-family);
+  color: var(--text);
+  background: #fff;
+  margin: 0;
+}
+
+/* ============= Header bianco (logo + titolo) ============================ */
+.header-white{
+  background: #fff;
+  border-bottom: 1px solid var(--header-border);
+}
+
+.header-inner{
+  /* layout fluido con respiro */
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: 4px 12px;              /* ridotto padding verticale */
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  min-height: 56px;               /* poco più alto del logo */
+}
+
+.brand-left{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Logo grande a sinistra (usa la tua immagine statica) */
+.brand-logo{
+  display: block;
+  width: 50px;           /* regola a piacere */
+  height: auto;
+}
+
+/* Titolo del sistema */
+.brand-title{
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--brand-teal);
+  letter-spacing: 0.3px;
+}
+
+/* ============= Barra teal (breadcrumb/menu) ============================= */
+.topstrip{
+  background: var(--brand-teal);
+  color: #fff;
+}
+
+/* contenuto orizzontale: menu a sinistra, utente a destra */
+.topstrip-inner{
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Breadcrumb/menu semplice orizzontale */
+.breadcrumb-menu{
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.breadcrumb-menu li{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* link del menu: testo chiaro con lieve ombra, caret ">" separatore */
+.breadcrumb-menu a{
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 0 rgba(0,0,0,.08);
+}
+.breadcrumb-menu a:hover{
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* separatore ">" tra le voci (puoi sostituirlo con icona se vuoi) */
+.breadcrumb-menu .sep{
+  opacity: .9;
+  font-weight: 700;
+}
+
+/* Nome utente a destra */
+.user-area{
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* ============= Contenuto pagina ======================================== */
+.page{
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: 20px 16px 40px;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--brand-primary);
+  --bs-btn-border-color: var(--brand-primary);
+  --bs-btn-hover-bg: color-mix(in oklab, var(--brand-primary), black 10%);
+  --bs-btn-hover-border-color: color-mix(in oklab, var(--brand-primary), black 12%);
+}
+
+/* ============= Responsive =============================================== */
+@media (max-width: 991.98px){
+  .brand-logo{ width: 72px; }
+  .brand-title{ font-size: 26px; }
+
+  .breadcrumb-menu{
+    gap: 16px;
+    overflow-x: auto;    /* in mobile, permette lo scroll orizzontale */
+  }
+}
+
+@media (max-width: 575.98px){
+  .brand-logo{ width: 64px; }
+  .brand-title{ font-size: 22px; }
+  .topstrip-inner{ padding: 8px 12px; }
+  .page{ padding: 16px 12px 32px; }
+}

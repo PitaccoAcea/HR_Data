@@ -27,3 +27,7 @@ db.sqlite3
 # OS files
 .DS_Store
 Thumbs.db
+
+#Specifiche
+check_db.py
+web.config
