@@ -49,11 +49,13 @@
 
         <div class="user-area">
           {% if request.user.is_authenticated %}
-            {{ request.user.first_name }} {{ request.user.last_name }}
+            {% with request.user.username|cut:"TI\\" as nome_utente %}
+              👤 {{ nome_utente }}
+            {% endwith %}
           {% else %}
-            Utente non autenticato
+            👤 Utente non autenticato
           {% endif %}
-</div>
+        </div>
       </div>
     </div>
 
