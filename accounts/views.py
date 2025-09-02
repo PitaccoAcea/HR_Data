@@ -83,50 +83,66 @@ def gestione_utenti(request):
 #     return risultati
 
 def cerca_ldap(query):
-    from ldap3 import Server, Connection, ALL, SUBTREE
+    from ldap3 import Server, Connection, ALL, SUBTREE, NTLM
+    import os
     
-    server = Server('aceaspa.it', get_info=ALL)
+    # Equivalente di ConfigurationManager.AppSettings.Get("ADPath")
+    # Se non hai il path specifico, usa il domain controller
+    ad_path = "aceaspa.it"  # o il path specifico dal tuo config
+    
+    server = Server(ad_path, get_info=ALL)
 
     try:
-        conn = Connection(server, auto_bind=True)
+        # Equivalente di AuthenticationType = AuthenticationTypes.Secure
+        # auto_bind=True con NTLM dovrebbe usare le credenziali dell'utente corrente
+        conn = Connection(
+            server, 
+            auto_bind=True,
+            authentication=NTLM,  # Equivalente di Secure authentication
+            raise_exceptions=True
+        )
     except Exception as e:
         print("Errore di connessione LDAP:", e)
         return []
 
-    # Usa esattamente lo stesso filtro del C#
+    # Filtro identico al C#
     filtro = f"(displayName=*{query.strip()}*)"
 
     try:
+        # Parametri corrispondenti al C#
         conn.search(
-            search_base='DC=aceaspa,DC=it',
+            search_base='DC=aceaspa,DC=it',  # Equivalente del root path
             search_filter=filtro,
-            search_scope=SUBTREE,
-            attributes=["displayName", "mail"],
-            size_limit=100,
-            time_limit=30
+            search_scope=SUBTREE,  # SearchScope.Subtree
+            attributes=["displayName", "mail"],  # PropertiesToLoad
+            size_limit=100,  # SizeLimit = 100
+            time_limit=30  # ClientTimeout = 30 secondi
         )
         
         print(f"LDAP risultati trovati: {len(conn.entries)}")
-        print(f"Filtro usato: {filtro}")
-        
-        # Debug: stampa i primi risultati per vedere cosa viene restituito
-        for i, entry in enumerate(conn.entries[:3]):  # Prime 3 entries per debug
-            print(f"Entry {i}: DN={entry.entry_dn}")
-            print(f"  displayName: {entry.displayName}")
-            print(f"  mail: {entry.mail}")
         
     except Exception as e:
         print("Errore durante la ricerca LDAP:", e)
         return []
 
+    # Costruisci la lista risultati come il C#
     risultati = []
     for entry in conn.entries:
         if entry.displayName:
+            # Il C# aggiunge ogni displayName alla lista
+            display_name = str(entry.displayName)
+            email = str(entry.mail) if entry.mail else ""
+            
             risultati.append({
-                "displayName": str(entry.displayName),
-                "email": str(entry.mail) if entry.mail else "",
+                "displayName": display_name,
+                "email": email,
             })
 
     conn.unbind()
+    
+    # Ordina per displayName (equivalente del SortOption in C#)
     risultati.sort(key=lambda x: x["displayName"])
-    return risultati 
+    
+    return risultati
+    
+    
