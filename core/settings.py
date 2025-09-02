@@ -16,6 +16,8 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
+
+
 # === Path base del progetto ===
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -70,6 +72,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "main",  # app minimale per la home
+    "accounts",  # app per la gestione utenti + LDAP
 ]
 
 MIDDLEWARE = [
@@ -80,6 +83,9 @@ MIDDLEWARE = [
 
     # 👇 Ordine corretto: prima AuthenticationMiddleware...
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+    # ...per utente fittizio in dev
+    'core.middleware.fake_remote_user.FakeRemoteUserMiddleware',
 
     # ...poi RemoteUserMiddleware
     'django.contrib.auth.middleware.RemoteUserMiddleware',
@@ -95,7 +101,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],  # aggiungerai qui eventuali cartelle di template personalizzate
+        "DIRS": [BASE_DIR / "templates",],  # aggiungerai qui eventuali cartelle di template personalizzate
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
