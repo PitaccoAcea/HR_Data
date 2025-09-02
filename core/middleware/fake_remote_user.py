@@ -11,7 +11,7 @@ class FakeRemoteUserMiddleware(MiddlewareMixin):
     """
     def process_request(self, request):
         if settings.DEBUG:
-            fake_username = "TI\\a37400c"
+            fake_username = "TI\\FakeDev"
             request.META["REMOTE_USER"] = fake_username
 
             # Crea utente Django (se necessario)
