@@ -48,26 +48,37 @@ def gestione_utenti(request):
 
 
 def cerca_ldap(query):
+    from ldap3 import Server, Connection, ALL
+
     server = Server('aceaspa.it', get_info=ALL)
 
-    # Bind anonimo, visto che è supportato
-    conn = Connection(server, auto_bind=True)
+    try:
+        conn = Connection(server, auto_bind=True)  # bind anonimo e sicuro
+    except Exception as e:
+        print("Errore di connessione LDAP:", e)
+        return []
 
-    filtro = f"(&(objectClass=user)(|(sn=*{query}*)(givenName=*{query}*)))"
-    conn.search(
-        search_base=BASE_DN,
-        search_filter=filtro,
-        attributes=["sAMAccountName", "givenName", "sn", "mail"]
-    )
+    # Filtro per displayName con wildcard finale come in C#
+    filtro = f"(displayName={query.strip()}*)"
+
+    try:
+        conn.search(
+            search_base='DC=aceaspa,DC=it',
+            search_filter=filtro,
+            attributes=["displayName", "mail"]
+        )
+        print(f"LDAP risultati trovati: {len(conn.entries)}")
+    except Exception as e:
+        print("Errore durante la ricerca LDAP:", e)
+        return []
 
     risultati = []
     for e in conn.entries:
         risultati.append({
-            "username": str(e.sAMAccountName),
-            "nome": str(e.givenName),
-            "cognome": str(e.sn),
+            "displayName": str(e.displayName),
             "email": str(e.mail) if e.mail else "",
         })
+
     return risultati
 
     
