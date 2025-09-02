@@ -94,7 +94,7 @@ def cerca_ldap(query):
         return []
 
     # Usa esattamente lo stesso filtro del C#
-    filtro = f"(displayName={query.strip()}*)"
+    filtro = f"(displayName=*{query.strip()}*)"
 
     try:
         conn.search(
