@@ -1,34 +1,41 @@
 {% extends "base.html" %}
 {% load static %}
 
-
 {% block content %}
 <h2>Gestione Utenti</h2>
+
+<!-- FORM DI RICERCA -->
 <form method="post">
-{% csrf_token %}
-{{ form.query.label_tag }} {{ form.query }}
-<button type="submit" name="cerca">Cerca</button>
+  {% csrf_token %}
+  {{ form.query.label_tag }} {{ form.query }}
+  <button type="submit" name="cerca">Cerca</button>
 </form>
 
-
+<!-- RISULTATI LDAP -->
 {% if ldap_results %}
-<h4>Risultati LDAP:</h4>
-<ul>
-{% for u in ldap_results %}
-<li>{{ u.displayName  }} - {{ u.email }}</li>
-{% empty %}
-    <p>Nessun risultato trovato.</p>
-{% endfor %}
-</ul>
+  <h4>Risultati LDAP:</h4>
+  <ul>
+    {% for u in ldap_results %}
+      <li>
+        <strong>{{ u.displayName }}</strong>
+        {% if u.mail %} - {{ u.mail }}{% endif %}
+        {% if u.sAMAccountName %} - <code>{{ u.sAMAccountName }}</code>{% endif %}
+      </li>
+    {% empty %}
+      <li>Nessun risultato trovato.</li>
+    {% endfor %}
+  </ul>
+{% elif form.is_bound %}
+  <p>Nessun risultato trovato.</p>
 {% endif %}
 
-
+<!-- UTENTI LOCALI REGISTRATI -->
 <h4>Utenti registrati</h4>
 <ul>
-{% for u in utenti %}
-<li>{{ u }} - Attivo: {{ u.attivo }}</li>
-{% endfor %}
+  {% for u in utenti %}
+    <li>{{ u }} - Attivo: {{ u.attivo }}</li>
+  {% empty %}
+    <li>Nessun utente registrato.</li>
+  {% endfor %}
 </ul>
-
-
 {% endblock %}

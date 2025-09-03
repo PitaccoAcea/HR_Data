@@ -1,7 +1,8 @@
 import os
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from ldap3 import Server, Connection, NTLM, ALL
+from ldap3 import Server, Connection, SASL, GSSAPI, ALL, SUBTREE
+from ldap3.core.exceptions import LDAPException
 from .models import Utente, GruppoAutorizzativo, UtenteGruppo
 from .forms import CercaUtenteLDAPForm, AssociaGruppoForm
 
@@ -47,102 +48,54 @@ def gestione_utenti(request):
     return render(request, "accounts/gestione_utenti.html", context)
 
 
-# def cerca_ldap(query):
-#     from ldap3 import Server, Connection, ALL
-
-#     server = Server('aceaspa.it', get_info=ALL)
-
-#     try:
-#         conn = Connection(server, auto_bind=True)  # bind anonimo e sicuro
-#     except Exception as e:
-#         print("Errore di connessione LDAP:", e)
-#         return []
-
-#     # Filtro per displayName con wildcard finale come in C#
-#     #filtro = f"(displayName={query.strip()}*)"
-#     filtro = f"(&(objectClass=user)(displayName={query.strip()}*))"
-
-#     try:
-#         conn.search(
-#             search_base='DC=aceaspa,DC=it',
-#             search_filter=filtro,
-#             attributes=["displayName", "mail"]
-#         )
-#         print(f"LDAP risultati trovati: {len(conn.entries)}")
-#     except Exception as e:
-#         print("Errore durante la ricerca LDAP:", e)
-#         return []
-
-#     risultati = []
-#     for e in conn.entries:
-#         risultati.append({
-#             "displayName": str(e.displayName),
-#             "email": str(e.mail) if e.mail else "",
-#         })
-
-#     return risultati
-
-def cerca_ldap(query):
-    from ldap3 import Server, Connection, ALL, SUBTREE, NTLM
-    import os
+def cerca_ldap(query: str, attributi=None, max_risultati=50):
+    """
+    Esegue una ricerca LDAP utilizzando l'autenticazione integrata Windows (GSSAPI).
     
-    # Equivalente di ConfigurationManager.AppSettings.Get("ADPath")
-    # Se non hai il path specifico, usa il domain controller
-    ad_path = "aceaspa.it"  # o il path specifico dal tuo config
-    
-    server = Server(ad_path, get_info=ALL)
+    :param query: stringa da cercare nel displayName (wildcard automatica).
+    :param attributi: lista di attributi da recuperare.
+    :param max_risultati: numero massimo di risultati da restituire.
+    :return: lista di dizionari con i dati LDAP trovati.
+    """
+    if attributi is None:
+        attributi = ["displayName", "mail", "sAMAccountName"]
 
-    try:
-        # Equivalente di AuthenticationType = AuthenticationTypes.Secure
-        # auto_bind=True con NTLM dovrebbe usare le credenziali dell'utente corrente
-        conn = Connection(
-            server, 
-            auto_bind=True,
-            authentication=NTLM,  # Equivalente di Secure authentication
-            raise_exceptions=True
-        )
-    except Exception as e:
-        print("Errore di connessione LDAP:", e)
-        return []
-
-    # Filtro identico al C#
-    filtro = f"(displayName=*{query.strip()}*)"
-
-    try:
-        # Parametri corrispondenti al C#
-        conn.search(
-            search_base='DC=aceaspa,DC=it',  # Equivalente del root path
-            search_filter=filtro,
-            search_scope=SUBTREE,  # SearchScope.Subtree
-            attributes=["displayName", "mail"],  # PropertiesToLoad
-            size_limit=100,  # SizeLimit = 100
-            time_limit=30  # ClientTimeout = 30 secondi
-        )
-        
-        print(f"LDAP risultati trovati: {len(conn.entries)}")
-        
-    except Exception as e:
-        print("Errore durante la ricerca LDAP:", e)
-        return []
-
-    # Costruisci la lista risultati come il C#
+    filtro = f'(displayName=*{query}*)'
     risultati = []
-    for entry in conn.entries:
-        if entry.displayName:
-            # Il C# aggiunge ogni displayName alla lista
-            display_name = str(entry.displayName)
-            email = str(entry.mail) if entry.mail else ""
-            
-            risultati.append({
-                "displayName": display_name,
-                "email": email,
-            })
 
-    conn.unbind()
-    
-    # Ordina per displayName (equivalente del SortOption in C#)
-    risultati.sort(key=lambda x: x["displayName"])
-    
+    try:
+        server = Server('ahinfrapdc01gcp.aceaspa.it', get_info=ALL)
+        conn = Connection(
+            server,
+            authentication=SASL,
+            sasl_mechanism=GSSAPI,
+            auto_bind=True
+        )
+
+        conn.search(
+            search_base='DC=aceaspa,DC=it',
+            search_filter=filtro,
+            search_scope=SUBTREE,
+            attributes=attributi,
+            size_limit=max_risultati
+        )
+
+        for entry in conn.entries:
+            item = {}
+            for attr in attributi:
+                val = entry[attr].value
+                item[attr] = val if val is not None else ""
+            risultati.append(item)
+
+        conn.unbind()
+
+    except LDAPException as e:
+        print(f"Errore LDAP: {e}")
+    except Exception as ex:
+        print(f"Errore generale nella ricerca LDAP: {ex}")
+
     return risultati
+
+
     
     
