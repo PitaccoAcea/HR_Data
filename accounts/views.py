@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django import template
 from urllib.parse import urlencode
+from .decorators import gruppo_richiesto
 register = template.Library()
 
 
@@ -20,6 +21,7 @@ BASE_DN = 'DC=aceaspa,DC=it'
 
 
 @login_required
+@gruppo_richiesto("admin")
 def gestione_utenti(request):
     context = {}
     username_remoto = request.META.get("REMOTE_USER", "")
@@ -425,6 +427,7 @@ if __name__ == "__main__":
 
 
 @login_required
+@gruppo_richiesto("admin")
 def info_utenti(request):
     query = request.GET.get('query', '').strip()
     max_risultati = int(request.GET.get('max_risultati', 50))
@@ -512,6 +515,7 @@ def info_utenti(request):
 #     return render(request, "accounts/gestione_gruppi.html", context)
 
 @login_required
+@gruppo_richiesto("admin")
 def gestione_gruppi(request):
     username = request.GET.get("username")
     display_name = request.GET.get("name", username)
