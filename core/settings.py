@@ -170,7 +170,7 @@ if os.environ.get("DJANGO_ENV", "dev") == "dev":
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Directory aggiuntiva per i template di progetto (oltre a quelli delle app)
-TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
+#TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
 
 # Statici: oltre a STATIC_ROOT (per collectstatic) dichiariamo la sorgente locale
 STATIC_URL = os.environ.get("STATIC_URL", "static/")

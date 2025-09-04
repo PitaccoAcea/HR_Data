@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Colonna sinistra - Associazioni -->
+        <div class="col-md-6">
+            <div class="card border-start border-primary border-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Associa Gruppi a {{ display_name }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            {% for gruppo in gruppi %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="gruppi" value="{{ gruppo.id }}"
+                                    id="check_gruppo_{{ gruppo.id }}"
+                                    {% if gruppo.id in gruppi_assoc %}checked{% endif %}>
+                                <label class="form-check-label" for="check_gruppo_{{ gruppo.id }}">
+                                    {{ gruppo.nome }}
+                                </label>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted">Nessun gruppo disponibile</p>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" name="associa" class="btn btn-primary btn-sm">
+                            <i class="fas fa-save me-1"></i> Salva Associazioni
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Colonna destra - Gestione Gruppi -->
+        <div class="col-md-6">
+            <div class="card border-start border-secondary border-4 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Gestione Gruppi Autorizzativi</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ gruppo_form.nome.label_tag }} {{ gruppo_form.nome }}
+                        <button type="submit" name="crea_gruppo" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i> Crea Nuovo Gruppo
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <ul class="list-group">
+                        {% for gruppo in gruppi %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ gruppo.nome }}
+                            <div class="btn-group btn-group-sm">
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="gruppo_id" value="{{ gruppo.id }}">
+                                    <input type="text" name="nuovo_nome" class="form-control form-control-sm d-inline w-auto" placeholder="Nuovo nome" required>
+                                    <button type="submit" name="modifica_gruppo" class="btn btn-outline-warning"><i class="fas fa-edit"></i></button>
+                                </form>
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="gruppo_id" value="{{ gruppo.id }}">
+                                    <button type="submit" name="elimina_gruppo" class="btn btn-outline-danger" onclick="return confirm('Confermi l\'eliminazione del gruppo?')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-muted">Nessun gruppo presente.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

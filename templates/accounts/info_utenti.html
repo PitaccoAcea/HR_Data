@@ -1,0 +1,767 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                <!--<div class="card-header custom-header text-white">-->
+                    <h4 class="mb-0">
+                        <i class="fas fa-users me-2 bg-primary"></i>
+                        Ricerca Utenti Active Directory
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Form di ricerca -->
+                    <form method="GET" class="mb-4" id="searchForm">
+                        <div class="row align-items-end">
+                            <div class="col-md-6">
+                                <label for="query" class="form-label">Cerca utente:</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="query" 
+                                       name="query" 
+                                       value="{{ query|default:'' }}" 
+                                       placeholder="Nome, cognome, username o email..."
+                                       autocomplete="off">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="max_risultati" class="form-label">Max risultati:</label>
+                                <select class="form-select" id="max_risultati" name="max_risultati">
+                                    <option value="10" {% if max_risultati == '10' %}selected{% endif %}>10</option>
+                                    <option value="25" {% if max_risultati == '25' %}selected{% endif %}>25</option>
+                                    <option value="50" {% if max_risultati == '50' or not max_risultati %}selected{% endif %}>50</option>
+                                    <option value="100" {% if max_risultati == '100' %}selected{% endif %}>100</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-1"></i>
+                                        Cerca
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Opzioni avanzate -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="solo_attivi" name="solo_attivi" 
+                                           {% if solo_attivi %}checked{% endif %}>
+                                    <label class="form-check-label" for="solo_attivi">
+                                        Solo account attivi
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="dettagli_completi" name="dettagli_completi" 
+                                           {% if dettagli_completi %}checked{% endif %}>
+                                    <label class="form-check-label" for="dettagli_completi">
+                                        Mostra tutti i dettagli
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Campi hidden per mantenere lo stato dopo il toggle -->
+                        {% if username_modificato %}
+                            <input type="hidden" name="scroll_to_user" value="{{ username_modificato }}">
+                        {% endif %}
+                    </form>
+
+                    <!-- Risultati -->
+                    {% if query %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Ricerca per: <strong>"{{ query }}"</strong> - 
+                            Trovati <strong>{{ risultati|length }}</strong> risultati
+                            {% if tempo_ricerca %}
+                                ({{ tempo_ricerca|floatformat:3 }}s)
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    {% if errore %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            <strong>Errore:</strong> {{ errore }}
+                        </div>
+                    {% endif %}
+
+                    {% if risultati %}
+                        <!-- Vista tabellare compatta -->
+                        {% if not dettagli_completi %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Nome Completo</th>
+                                        <th>Username</th>
+                                        <th>Email</th>
+                                        <th>Dipartimento</th>
+                                        <th>Telefono</th>
+                                        <th>Stato AD</th>
+                                        <th>Stato DB</th>
+                                        <th>Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for utente in risultati %}
+                                    <tr id="user-row-{{ utente.sAMAccountName }}" {% if username_modificato == utente.sAMAccountName %}class="table-warning"{% endif %}>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle me-2">
+                                                    {{ utente.givenName|first|default:'U' }}{{ utente.sn|first|default:'' }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ utente.displayName|default:'N/A' }}</strong>
+                                                    {% if utente.title %}
+                                                        <br><small class="text-muted">{{ utente.title }}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <code>{{ utente.sAMAccountName|default:'N/A' }}</code>
+                                        </td>
+                                        <td>
+                                            {% if utente.mail %}
+                                                <a href="mailto:{{ utente.mail }}" class="text-decoration-none">
+                                                    {{ utente.mail }}
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ utente.department|default:'N/A' }}
+                                            {% if utente.company %}
+                                                <br><small class="text-muted">{{ utente.company }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if utente.telephoneNumber %}
+                                                <a href="tel:{{ utente.telephoneNumber }}" class="text-decoration-none">
+                                                    {{ utente.telephoneNumber }}
+                                                </a>
+                                            {% endif %}
+                                            {% if utente.mobile %}
+                                                <br><a href="tel:{{ utente.mobile }}" class="text-decoration-none text-success">
+                                                    <i class="fas fa-mobile-alt me-1"></i>{{ utente.mobile }}
+                                                </a>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if utente.account_active %}
+                                                <span class="badge bg-success">Attivo</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Disattivo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% with utente_db=utenti_db|keyvalue:utente.sAMAccountName %}
+                                                {% if utente_db %}
+                                                    {% if utente_db.attivo %}
+                                                        <span class="badge bg-success">Attivo</span>
+                                                        <form method="post" action="{% url 'toggle_attivo' utente_db.id %}" class="d-inline toggle-form">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="username" value="{{ utente.sAMAccountName }}">
+                                                            <input type="hidden" name="query" value="{{ query }}">
+                                                            <input type="hidden" name="max_risultati" value="{{ max_risultati }}">
+                                                            <input type="hidden" name="solo_attivi" value="{% if solo_attivi %}on{% endif %}">
+                                                            <input type="hidden" name="dettagli_completi" value="{% if dettagli_completi %}on{% endif %}">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Disattiva">
+                                                                <i class="fas fa-toggle-off"></i>
+                                                            </button>
+                                                        </form>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">Disattivo</span>
+                                                        <form method="post" action="{% url 'toggle_attivo' utente_db.id %}" class="d-inline toggle-form">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="username" value="{{ utente.sAMAccountName }}">
+                                                            <input type="hidden" name="query" value="{{ query }}">
+                                                            <input type="hidden" name="max_risultati" value="{{ max_risultati }}">
+                                                            <input type="hidden" name="solo_attivi" value="{% if solo_attivi %}on{% endif %}">
+                                                            <input type="hidden" name="dettagli_completi" value="{% if dettagli_completi %}on{% endif %}">
+                                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Attiva">
+                                                                <i class="fas fa-toggle-on"></i>
+                                                            </button>
+                                                        </form>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Non in DB</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td>
+                                            {% with utente_db=utenti_db|keyvalue:utente.sAMAccountName %}
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#dettagliModal"
+                                                        data-username="{{ utente.sAMAccountName|default:'N/A' }}"
+                                                        data-displayname="{{ utente.displayName|default:'N/A' }}"
+                                                        data-email="{{ utente.mail|default:'N/A' }}"
+                                                        data-telefono="{{ utente.telephoneNumber|default:'N/A' }}"
+                                                        data-dipartimento="{{ utente.department|default:'N/A' }}"
+                                                        data-account-attivo="{{ utente.account_active|yesno:'true,false' }}"
+                                                        data-gruppi="{{ utente.memberOf|join:', ' }}"
+                                                        data-stato-db="{% if utente_db %}{% if utente_db.attivo %}Attivo{% else %}Disattivo{% endif %}{% else %}Non in DB{% endif %}"
+                                                        data-manager="{{ utente.manager_name|default:'N/A' }}"
+                                                        data-azienda="{{ utente.company|default:'N/A' }}"
+                                                        onclick="mostraDettagliDaButton(this)">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-success"
+                                                        data-username="{{ utente.sAMAccountName|default:'N/A' }}"
+                                                        data-displayname="{{ utente.displayName|default:'N/A' }}"
+                                                        onclick="aggiungiAGruppoDaButton(this)">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                            </div>
+                                            {% endwith %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Vista dettagliata -->
+                        {% else %}
+                        <div class="row">
+                            {% for utente in risultati %}
+                            <div class="col-12 mb-4">
+                                <div class="card border-start border-primary border-4 {% if username_modificato == utente.sAMAccountName %}border-warning{% endif %}" id="user-card-{{ utente.sAMAccountName }}">
+                                    <div class="card-header bg-light {% if username_modificato == utente.sAMAccountName %}bg-warning-subtle{% endif %}">
+                                        <div class="row align-items-center">
+                                            <div class="col">
+                                                <h5 class="mb-0">
+                                                    <i class="fas fa-user me-2"></i>
+                                                    {{ utente.displayName|default:'Utente senza nome' }}
+                                                    {% if username_modificato == utente.sAMAccountName %}
+                                                        <span class="badge bg-warning text-dark ms-2">Modificato</span>
+                                                    {% endif %}
+                                                </h5>
+                                                {% if utente.title %}
+                                                    <small class="text-muted">{{ utente.title }}</small>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-auto">
+                                                <div class="d-flex gap-2">
+                                                    <!-- Stato Active Directory -->
+                                                    <div>
+                                                        <small class="text-muted d-block">AD:</small>
+                                                        {% if utente.account_active %}
+                                                            <span class="badge bg-success fs-6">Attivo</span>
+                                                        {% else %}
+                                                            <span class="badge bg-danger fs-6">Disattivo</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <!-- Stato Database -->
+                                                    <div>
+                                                        <small class="text-muted d-block">DB:</small>
+                                                        {% with utente_db=utenti_db|keyvalue:utente.sAMAccountName %}
+                                                            {% if utente_db %}
+                                                                {% if utente_db.attivo %}
+                                                                    <span class="badge bg-success fs-6">Attivo</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-danger fs-6">Disattivo</span>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                <span class="badge bg-secondary fs-6">Non in DB</span>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <!-- Colonna sinistra - Info base -->
+                                            <div class="col-md-6">
+                                                <h6 class="text-primary">
+                                                    <i class="fas fa-id-card me-1"></i>
+                                                    Informazioni Base
+                                                </h6>
+                                                
+                                                <div class="mb-3">
+                                                    <div class="info-item">
+                                                        <strong>Nome completo:</strong> {{ utente.full_name|default:'N/A' }}
+                                                    </div>
+                                                    <div class="info-item">
+                                                        <strong>Username:</strong> <code>{{ utente.sAMAccountName|default:'N/A' }}</code>
+                                                    </div>
+                                                    <div class="info-item">
+                                                        <strong>UPN:</strong> {{ utente.userPrincipalName|default:'N/A' }}
+                                                    </div>
+                                                    <div class="info-item">
+                                                        <strong>Email:</strong> 
+                                                        {% if utente.mail %}
+                                                            <a href="mailto:{{ utente.mail }}">{{ utente.mail }}</a>
+                                                        {% else %}
+                                                            N/A
+                                                        {% endif %}
+                                                    </div>
+                                                    {% if utente.employeeID %}
+                                                    <div class="info-item">
+                                                        <strong>ID Dipendente:</strong> {{ utente.employeeID }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                <!-- Contatti -->
+                                                <h6 class="text-primary">
+                                                    <i class="fas fa-phone me-1"></i>
+                                                    Contatti
+                                                </h6>
+                                                <div class="mb-3">
+                                                    {% if utente.telephoneNumber %}
+                                                    <div class="info-item">
+                                                        <strong>Telefono:</strong> 
+                                                        <a href="tel:{{ utente.telephoneNumber }}">{{ utente.telephoneNumber }}</a>
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if utente.mobile %}
+                                                    <div class="info-item">
+                                                        <strong>Cellulare:</strong> 
+                                                        <a href="tel:{{ utente.mobile }}">{{ utente.mobile }}</a>
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if utente.facsimileTelephoneNumber %}
+                                                    <div class="info-item">
+                                                        <strong>Fax:</strong> {{ utente.facsimileTelephoneNumber }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Colonna destra - Info organizzative -->
+                                            <div class="col-md-6">
+                                                <h6 class="text-primary">
+                                                    <i class="fas fa-building me-1"></i>
+                                                    Organizzazione
+                                                </h6>
+                                                
+                                                <div class="mb-3">
+                                                    {% if utente.company %}
+                                                    <div class="info-item">
+                                                        <strong>Azienda:</strong> {{ utente.company }}
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if utente.department %}
+                                                    <div class="info-item">
+                                                        <strong>Dipartimento:</strong> {{ utente.department }}
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if utente.division %}
+                                                    <div class="info-item">
+                                                        <strong>Divisione:</strong> {{ utente.division }}
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if utente.manager_name %}
+                                                    <div class="info-item">
+                                                        <strong>Manager:</strong> {{ utente.manager_name }}
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if utente.directReports_count > 0 %}
+                                                    <div class="info-item">
+                                                        <strong>Dipendenti diretti:</strong> {{ utente.directReports_count }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                
+                                                <!-- Indirizzo -->
+                                                {% if utente.streetAddress or utente.l or utente.st %}
+                                                <h6 class="text-primary">
+                                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                                    Indirizzo
+                                                </h6>
+                                                <div class="mb-3">
+                                                    {% if utente.streetAddress %}
+                                                    <div class="info-item">{{ utente.streetAddress }}</div>
+                                                    {% endif %}
+                                                    {% if utente.l %}
+                                                    <div class="info-item">
+                                                        {{ utente.l }}{% if utente.postalCode %} {{ utente.postalCode }}{% endif %}
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if utente.st %}
+                                                    <div class="info-item">{{ utente.st }}</div>
+                                                    {% endif %}
+                                                    {% if utente.co %}
+                                                    <div class="info-item">{{ utente.co }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <!-- Gruppi -->
+                                                <h6 class="text-primary">
+                                                    <i class="fas fa-users me-1"></i>
+                                                    Appartenenza Gruppi
+                                                    <span class="badge bg-secondary ms-2">{{ utente.memberOf_count|default:0 }}</span>
+                                                </h6>
+                                                
+                                                {% if utente.memberOf_count > 0 %}
+                                                <div class="group-list" style="max-height: 150px; overflow-y: auto;">
+                                                    {% for gruppo in utente.memberOf %}
+                                                    <span class="badge bg-light text-dark me-1 mb-1">
+                                                        {{ gruppo|cut:',' }}
+                                                    </span>
+                                                    {% endfor %}
+                                                </div>
+                                                {% else %}
+                                                <small class="text-muted">Nessun gruppo assegnato</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Azioni -->
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                <div class="d-flex gap-2 align-items-center">
+                                                    <!-- Toggle stato DB -->
+                                                    {% with utente_db=utenti_db|keyvalue:utente.sAMAccountName %}
+                                                        {% if utente_db %}
+                                                            <form method="post" action="{% url 'toggle_attivo' utente_db.id %}" class="d-inline toggle-form">
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="username" value="{{ utente.sAMAccountName }}">
+                                                                <input type="hidden" name="query" value="{{ query }}">
+                                                                <input type="hidden" name="max_risultati" value="{{ max_risultati }}">
+                                                                <input type="hidden" name="solo_attivi" value="{% if solo_attivi %}on{% endif %}">
+                                                                <input type="hidden" name="dettagli_completi" value="{% if dettagli_completi %}on{% endif %}">
+                                                                {% if utente_db.attivo %}
+                                                                    <button type="submit" class="btn btn-outline-danger">
+                                                                        <i class="fas fa-toggle-off me-1"></i>
+                                                                        Disattiva in DB
+                                                                    </button>
+                                                                {% else %}
+                                                                    <button type="submit" class="btn btn-outline-success">
+                                                                        <i class="fas fa-toggle-on me-1"></i>
+                                                                        Attiva in DB
+                                                                    </button>
+                                                                {% endif %}
+                                                            </form>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                    
+                                                    <!-- Altre azioni -->
+                                                    <div class="btn-group">
+                                                        <button class="btn btn-success" 
+                                                                data-username="{{ utente.sAMAccountName|default:'N/A' }}"
+                                                                data-displayname="{{ utente.displayName|default:'N/A' }}"
+                                                                onclick="aggiungiAGruppoDaButton(this)">
+                                                            <i class="fas fa-plus me-1"></i>
+                                                            Aggiungi a Gruppo
+                                                        </button>
+                                                        <button class="btn btn-outline-primary"
+                                                                data-username="{{ utente.sAMAccountName|default:'N/A' }}"
+                                                                onclick="copiaInfoDaButton(this)">
+                                                            <i class="fas fa-copy me-1"></i>
+                                                            Copia Username
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    
+                    {% elif query and not risultati and not errore %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-search me-1"></i>
+                            Nessun utente trovato per la ricerca "<strong>{{ query }}</strong>"
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal per dettagli utente -->
+<div class="modal fade" id="dettagliModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dettagli Utente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalContent">
+                <!-- Contenuto dinamico -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.info-item {
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+.group-list .badge {
+    font-size: 0.75em;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+/* Highlight per l'utente modificato */
+.table-warning {
+    background-color: #fff3cd !important;
+    animation: highlightFade 3s ease-in-out;
+}
+
+.border-warning {
+    border-color: #ffc107 !important;
+    border-width: 3px !important;
+}
+
+.bg-warning-subtle {
+    background-color: #fff3cd !important;
+}
+
+@keyframes highlightFade {
+    0% { background-color: #ffeaa7; }
+    100% { background-color: #fff3cd; }
+}
+</style>
+
+<!-- <script>
+function mostraDettagliDaButton(button) {
+    const username = button.dataset.username;
+    const displayName = button.dataset.displayname;
+    const email = button.dataset.email;
+    const telefono = button.dataset.telefono;
+    const dipartimento = button.dataset.dipartimento;
+    const accountAttivo = button.dataset.accountAttivo === 'true';
+    const gruppi = button.dataset.gruppi;
+    const manager = button.dataset.manager;
+    const azienda = button.dataset.azienda;
+    const statoDb = button.dataset.statoDbBadge || '';
+
+    mostraDettagli(username, displayName, email, telefono, dipartimento, accountAttivo, gruppi, manager, azienda, statoDb);
+}
+
+function aggiungiAGruppoDaButton(button) {
+    const username = button.dataset.username;
+    const displayName = button.dataset.displayname;
+    aggiungiAGruppo(username, displayName);
+}
+
+function copiaInfoDaButton(button) {
+    const username = button.dataset.username;
+    copiaInfo(username);
+}
+
+function mostraDettagli(username, displayName, email, telefono, dipartimento, accountAttivo, gruppi, manager, azienda) {
+    const modalContent = document.getElementById('modalContent');
+    
+    let html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-primary">Informazioni Base</h6>
+                <p><strong>Nome:</strong> ${displayName}</p>
+                <p><strong>Username:</strong> <code>${username}</code></p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Telefono:</strong> ${telefono}</p>
+                <p><strong>Dipartimento:</strong> ${dipartimento}</p>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-primary">Stato Account</h6>
+                <p><strong>Stato Account:</strong> ${accountAttivo ? '<span class="text-success">Sì</span>' : '<span class="text-danger">No</span>'}</p>
+                <p><strong>Stato in DB:</strong> ${statoDb}</p>
+                <p><strong>Gruppi:</strong> ${gruppi || 'Nessuno'}</p>
+                <p><strong>Manager:</strong> ${manager}</p>
+                <p><strong>Azienda:</strong> ${azienda}</p>
+            </div>
+        </div>
+    `;
+    
+    modalContent.innerHTML = html;
+}
+
+function aggiungiAGruppo(username, displayName) {
+    // Implementa la logica per aggiungere l'utente a un gruppo
+    if (confirm(`Vuoi aggiungere ${displayName} (${username}) a un gruppo?`)) {
+        // Reindirizza alla pagina di gestione gruppi
+        window.location.href = `/accounts/gestione-gruppi/?username=${username}&name=${encodeURIComponent(displayName)}`;
+    }
+}
+
+function copiaInfo(username) {
+    navigator.clipboard.writeText(username).then(function() {
+        // Mostra notifica di successo
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">Username copiato negli appunti!</div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    });
+}
+
+// Auto-submit del form with debounce
+// let searchTimeout;
+// document.getElementById('query').addEventListener('input', function() {
+//     clearTimeout(searchTimeout);
+//     const query = this.value;
+//     if (query.length >= 3) {
+//         searchTimeout = setTimeout(function() {
+//             document.querySelector('form').submit();
+//         }, 500);
+//     }
+// });
+
+(function() {
+    const queryInput = document.getElementById('query');
+    const form = document.getElementById('searchForm');
+
+    if (queryInput) {
+        // Blocca l'Enter nel campo di ricerca
+        queryInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // impedisce il submit con Invio
+            }
+        });
+    }
+
+    // Nessun auto-submit mentre si scrive: rimosso il debounce precedente.
+    // L'invio avverrà solo cliccando sul bottone "Cerca" (type="submit").
+})();
+
+
+</script> -->
+
+<script>
+function mostraDettagliDaButton(button) {
+    const username = button.dataset.username;
+    const displayName = button.dataset.displayname;
+    const email = button.dataset.email;
+    const telefono = button.dataset.telefono;
+    const dipartimento = button.dataset.dipartimento;
+    const accountAttivo = button.dataset.accountAttivo === 'true';
+    const gruppi = button.dataset.gruppi;
+    const statoDb = button.dataset.statoDb || 'N/A';
+    const manager = button.dataset.manager;
+    const azienda = button.dataset.azienda;
+
+    const modalContent = document.getElementById('modalContent');
+
+    // Determina il colore per lo stato DB (testo semplice)
+    let statoDbHtml = '';
+    if (statoDb === 'Attivo') {
+        statoDbHtml = `<span class="text-success">${statoDb}</span>`;
+    } else if (statoDb === 'Disattivo') {
+        statoDbHtml = `<span class="text-danger">${statoDb}</span>`;
+    } else {
+        statoDbHtml = `<span class="text-muted">${statoDb}</span>`;
+    }
+
+    const html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-primary">Informazioni Base</h6>
+                <p><strong>Nome:</strong> ${displayName}</p>
+                <p><strong>Username:</strong> <code>${username}</code></p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Telefono:</strong> ${telefono}</p>
+                <p><strong>Dipartimento:</strong> ${dipartimento}</p>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-primary">Stato Account</h6>
+                <p><strong>Attivo in AD:</strong> ${accountAttivo ? '<span class="text-success">Attivo</span>' : '<span class="text-danger">Disattivo</span>'}</p>
+                <p><strong>Stato in DB:</strong> ${statoDbHtml}</p>
+                <!-- <p><strong>Gruppi:</strong> ${gruppi || '<span class="text-muted">Nessuno</span>'}</p> -->
+                <p><strong>Manager:</strong> ${manager}</p>
+                <p><strong>Azienda:</strong> ${azienda}</p>
+            </div>
+        </div>
+    `;
+
+    modalContent.innerHTML = html;
+}
+
+function aggiungiAGruppoDaButton(button) {
+    const username = button.dataset.username;
+    const displayName = button.dataset.displayname;
+    aggiungiAGruppo(username, displayName);
+}
+
+function copiaInfoDaButton(button) {
+    const username = button.dataset.username;
+    copiaInfo(username);
+}
+
+function aggiungiAGruppo(username, displayName) {
+    if (confirm(`Vuoi aggiungere ${displayName} (${username}) a un gruppo?`)) {
+        window.location.href = `/accounts/gestione-gruppi/?username=${username}&name=${encodeURIComponent(displayName)}`;
+    }
+}
+
+function copiaInfo(username) {
+    navigator.clipboard.writeText(username).then(function() {
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">Username copiato negli appunti!</div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    });
+}
+
+// 🔒 Blocca l'invio del form con Enter nel campo di ricerca
+(function() {
+    const queryInput = document.getElementById('query');
+    const form = document.getElementById('searchForm');
+
+    if (queryInput) {
+        queryInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+            }
+        });
+    }
+})();
+</script>
+
+
+{% endblock %}
