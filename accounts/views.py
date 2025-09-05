@@ -1,18 +1,22 @@
 import os
 import time
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from ldap3 import Server, Connection, SASL, GSSAPI, ALL, SUBTREE
 from ldap3.core.exceptions import LDAPException
-from .models import Utente, GruppoAutorizzativo, UtenteGruppo
+from .models import Utente, GruppoAutorizzativo, UtenteGruppo, MenuVoce
 from .forms import CercaUtenteLDAPForm, AssociaGruppoForm, GruppoAutorizzativoForm
 from django.http import Http404, JsonResponse
 from django.contrib import messages
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django import template
 from urllib.parse import urlencode
 from .decorators import gruppo_richiesto
+from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
+from django.core.exceptions import ValidationError
 register = template.Library()
 
 
@@ -479,40 +483,6 @@ def info_utenti(request):
     
     return render(request, 'accounts/info_utenti.html', context)
 
-# @login_required
-# def gestione_gruppi(request):
-#     username = request.GET.get("username")
-#     nome = request.GET.get("name", "")
-    
-#     if not username:
-#         messages.error(request, "Username non specificato.")
-#         return redirect("info_utenti")
-
-#     # Recupera l'utente se esiste o lo crea (senza gruppo)
-#     utente, created = Utente.objects.get_or_create(username=username, defaults={"nome": nome})
-    
-#     gruppi_disponibili = GruppoAutorizzativo.objects.all()
-#     gruppi_associati = set(UtenteGruppo.objects.filter(utente=utente).values_list("gruppo_id", flat=True))
-
-#     if request.method == "POST":
-#         gruppi_selezionati = request.POST.getlist("gruppi")
-        
-#         # Aggiorna associazioni
-#         UtenteGruppo.objects.filter(utente=utente).delete()
-#         for gid in gruppi_selezionati:
-#             gruppo = GruppoAutorizzativo.objects.get(id=gid)
-#             UtenteGruppo.objects.create(utente=utente, gruppo=gruppo)
-        
-#         messages.success(request, "Associazioni aggiornate.")
-#         return redirect("gestione_gruppi")  # reload
-
-#     context = {
-#         "utente": utente,
-#         "gruppi_disponibili": gruppi_disponibili,
-#         "gruppi_associati": gruppi_associati,
-#     }
-
-#     return render(request, "accounts/gestione_gruppi.html", context)
 
 @login_required
 @gruppo_richiesto("admin")
@@ -629,4 +599,197 @@ def keyvalue(dict_data, key):
     if hasattr(dict_data, 'get'):
         return dict_data.get(key)
     return None
+
+@login_required
+@gruppo_richiesto("admin")
+def menu_gestione(request):
+    """
+    Pagina principale per la gestione del menù
+    """
+    # Ottieni tutti gli elementi del menù organizzati ad albero
+    menu_items = MenuVoce.objects.filter(id_padre__isnull=True).order_by('ordine', 'titolo')
+    
+    # Funzione ricorsiva per costruire l'albero completo
+    def build_tree(items, level=0):
+        tree = []
+        for item in items:
+            item.level = level
+            tree.append(item)
+            children = item.figli.all().order_by('ordine', 'titolo')
+            if children:
+                tree.extend(build_tree(children, level + 1))
+        return tree
+    
+    menu_tree = build_tree(menu_items)
+    gruppi = GruppoAutorizzativo.objects.all().order_by('nome')
+    
+    context = {
+        'menu_tree': menu_tree,
+        'gruppi': gruppi,
+        'page_title': 'Gestione Menù'
+    }
+    
+    return render(request, 'accounts/menu_gestione.html', context)
+
+
+@login_required
+@gruppo_richiesto("admin")
+def menu_voce_edit(request, voce_id=None):
+    """
+    Pagina per aggiungere/modificare una voce di menù
+    """
+    voce = get_object_or_404(MenuVoce, pk=voce_id) if voce_id else None
+    
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Crea o modifica la voce
+                if not voce:
+                    voce = MenuVoce()
+                
+                voce.titolo = request.POST.get('titolo', '').strip()
+                voce.url = request.POST.get('url', '').strip()
+                voce.ordine = int(request.POST.get('ordine', 0))
+                voce.icona = request.POST.get('icona', '').strip() or None
+                voce.note = request.POST.get('note', '').strip() or None
+                voce.attivo = bool(request.POST.get('attivo'))
+                
+                # Gestisce il padre
+                padre_id = request.POST.get('id_padre')
+                if padre_id and padre_id.isdigit():
+                    voce.id_padre = MenuVoce.objects.get(pk=int(padre_id))
+                else:
+                    voce.id_padre = None
+                
+                # Validazione
+                voce.full_clean()
+                voce.save()
+                
+                # Gestisce i gruppi autorizzati
+                gruppi_ids = request.POST.getlist('gruppi_autorizzati')
+                voce.gruppi_autorizzati.clear()
+                if gruppi_ids:
+                    gruppi = GruppoAutorizzativo.objects.filter(id__in=gruppi_ids)
+                    voce.gruppi_autorizzati.add(*gruppi)
+                
+                messages.success(request, f"Voce '{voce.titolo}' salvata con successo!")
+                return redirect('menu_gestione')
+                
+        except ValidationError as e:
+            messages.error(request, f"Errore di validazione: {e.message}")
+        except Exception as e:
+            messages.error(request, f"Errore durante il salvataggio: {str(e)}")
+    
+    # Ottieni possibili voci padre (escludendo se stesso e i suoi discendenti)
+    possibili_padri = MenuVoce.objects.all()
+    if voce:
+        # Escludi se stesso e i suoi discendenti per evitare cicli
+        def get_descendant_ids(item):
+            ids = [item.id]
+            for child in item.figli.all():
+                ids.extend(get_descendant_ids(child))
+            return ids
+        
+        exclude_ids = get_descendant_ids(voce)
+        possibili_padri = possibili_padri.exclude(id__in=exclude_ids)
+    
+    possibili_padri = possibili_padri.order_by('titolo')
+    gruppi = GruppoAutorizzativo.objects.all().order_by('nome')
+    
+    context = {
+        'voce': voce,
+        'possibili_padri': possibili_padri,
+        'gruppi': gruppi,
+        'page_title': 'Modifica Voce' if voce else 'Nuova Voce'
+    }
+    
+    return render(request, 'accounts/menu_voce_form.html', context)
+
+
+@login_required
+@gruppo_richiesto("admin")
+def menu_voce_delete(request, voce_id):
+    """
+    Elimina una voce di menù
+    """
+    voce = get_object_or_404(MenuVoce, pk=voce_id)
+    
+    if request.method == 'POST':
+        titolo = voce.titolo
+        try:
+            # Controlla se ha figli
+            if voce.figli.exists():
+                messages.warning(request, 
+                    f"Non puoi eliminare '{titolo}' perché ha delle sottovoci. "
+                    f"Elimina prima le sottovoci o spostale altrove.")
+            else:
+                voce.delete()
+                messages.success(request, f"Voce '{titolo}' eliminata con successo!")
+        except Exception as e:
+            messages.error(request, f"Errore durante l'eliminazione: {str(e)}")
+        
+        return redirect('menu_gestione')
+    
+    context = {
+        'voce': voce,
+        'page_title': 'Elimina Voce'
+    }
+    
+    return render(request, 'accounts/menu_voce_delete.html', context)
+
+
+@login_required
+@gruppo_richiesto("admin")
+@require_http_methods(["POST"])
+@csrf_exempt  # Solo per l'AJAX del drag&drop, usa il token CSRF nei form normali
+def menu_reorder(request):
+    """
+    Riordina le voci del menù tramite AJAX (drag & drop)
+    """
+    try:
+        data = json.loads(request.body)
+        updates = data.get('updates', [])
+        
+        with transaction.atomic():
+            for update in updates:
+                voce = MenuVoce.objects.get(pk=update['id'])
+                voce.ordine = update['ordine']
+                voce.save(update_fields=['ordine'])
+        
+        return JsonResponse({'success': True, 'message': 'Ordine aggiornato con successo!'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+@gruppo_richiesto("admin")
+@require_http_methods(["POST"])
+def menu_toggle_active(request, voce_id):
+    """
+    Attiva/disattiva una voce del menù
+    """
+    voce = get_object_or_404(MenuVoce, pk=voce_id)
+    
+    voce.attivo = not voce.attivo
+    voce.save(update_fields=['attivo'])
+    
+    status = "attivata" if voce.attivo else "disattivata"
+    messages.success(request, f"Voce '{voce.titolo}' {status}!")
+    
+    return redirect('menu_gestione')
+
+
+def menu_preview(request):
+    """
+    Anteprima del menù (accessibile a tutti per test)
+    """
+    menu_items = MenuVoce.get_menu_tree(request.user)
+    
+    context = {
+        'menu_items': menu_items,
+        'page_title': 'Anteprima Menù'
+    }
+    
+    return render(request, 'accounts/menu_preview.html', context)
 

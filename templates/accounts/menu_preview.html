@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% load menu_tags %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+.preview-container {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin: 20px 0;
+}
+
+.preview-header {
+  background: #007bff;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px 8px 0 0;
+}
+
+.preview-body {
+  padding: 0;
+}
+
+.user-info {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.menu-demo {
+  padding: 20px;
+}
+
+.breadcrumb-demo {
+  background: #e9ecef;
+  padding: 15px 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.info-box {
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.permissions-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.menu-structure {
+  font-family: 'Courier New', monospace;
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+  white-space: pre-line;
+}
+
+.demo-navigation {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.demo-btn {
+  padding: 8px 15px;
+  border: 1px solid #007bff;
+  background: white;
+  color: #007bff;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.demo-btn:hover {
+  background: #007bff;
+  color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+          <i class="fas fa-eye me-2"></i>
+          {{ page_title }}
+        </h1>
+        <div>
+          <a href="{% url 'menu_gestione' %}" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Gestisci Menù
+          </a>
+          <button onclick="window.location.reload()" class="btn btn-success">
+            <i class="fas fa-sync-alt"></i> Ricarica
+          </button>
+        </div>
+      </div>
+
+      <!-- Info utente -->
+      <div class="info-box">
+        <h5><i class="fas fa-user me-2"></i>Informazioni Utente</h5>
+        <div class="permissions-info">
+          <strong>Utente:</strong> 
+          {% if request.user.is_authenticated %}
+            {{ request.user.username }}
+            {% if request.user.is_superuser %}
+              <span class="badge bg-danger ms-2">Superuser</span>
+            {% endif %}
+          {% else %}
+            <span class="text-muted">Non autenticato</span>
+          {% endif %}
+          <br>
+          
+          <strong>Gruppi:</strong>
+          {% if request.user.is_authenticated %}
+            {% with user_groups=request.user.gruppi.all %}
+              {% if user_groups %}
+                {% for gruppo in user_groups %}
+                  <span class="badge bg-primary ms-1">{{ gruppo.nome }}</span>
+                {% endfor %}
+              {% else %}
+                <span class="text-muted">Nessun gruppo assegnato</span>
+              {% endif %}
+            {% endwith %}
+          {% else %}
+            <span class="text-muted">-</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Anteprima del menù come appare in topstrip -->
+      <div class="preview-container">
+        <div class="preview-header">
+          <h5 class="mb-0">
+            <i class="fas fa-desktop me-2"></i>
+            Anteprima Menù (come appare nella topstrip)
+          </h5>
+        </div>
+        <div class="preview-body">
+          <!-- Simula la topstrip -->
+          {% render_menu %}
+        </div>
+      </div>
+
+      <!-- Breadcrumb demo -->
+      <div class="preview-container">
+        <div class="preview-header">
+          <h5 class="mb-0">
+            <i class="fas fa-map-signs me-2"></i>
+            Breadcrumb Dinamico
+          </h5>
+        </div>
+        <div class="breadcrumb-demo">
+          {% render_breadcrumb %}
+        </div>
+        <div class="p-3">
+          <p class="text-muted mb-2">
+            Il breadcrumb si aggiorna automaticamente in base alla pagina corrente.
+            Pagina corrente: <code>{{ request.path }}</code>
+          </p>
+        </div>
+      </div>
+
+      <!-- Navigazione demo -->
+      <div class="preview-container">
+        <div class="preview-header">
+          <h5 class="mb-0">
+            <i class="fas fa-mouse-pointer me-2"></i>
+            Test Navigazione
+          </h5>
+        </div>
+        <div class="p-3">
+          <p class="mb-3">Clicca sui link per testare la navigazione e vedere come cambia il breadcrumb:</p>
+          <div class="demo-navigation">
+            {% for item in menu_items %}
+              <a href="{{ item.get_url }}" class="demo-btn">
+                {% if item.icona %}
+                  {{ item.get_icona_html|safe }}
+                {% endif %}
+                {{ item.titolo }}
+              </a>
+              
+              {% if item.is_dropdown %}
+                {% for child in item._figli_filtered %}
+                  <a href="{{ child.get_url }}" class="demo-btn" style="margin-left: 20px;">
+                    {% if child.icona %}
+                      {{ child.get_icona_html|safe }}
+                    {% endif %}
+                    ↳ {{ child.titolo }}
+                  </a>
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Struttura del menù -->
+      <div class="preview-container">
+        <div class="preview-header">
+          <h5 class="mb-0">
+            <i class="fas fa-sitemap me-2"></i>
+            Struttura Menù per l'Utente Corrente
+          </h5>
+        </div>
+        <div class="p-3">
+          {% if menu_items %}
+            <div class="menu-structure">{% for item in menu_items %}{{ item.titolo }} ({{ item.get_url }}){% if item.gruppi_autorizzati.exists %} [Gruppi: {% for g in item.gruppi_autorizzati.all %}{{ g.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}]{% else %} [Pubblico]{% endif %}{% if item.is_dropdown %}{% for child in item._figli_filtered %}
+  ├─ {{ child.titolo }} ({{ child.get_url }}){% if child.gruppi_autorizzati.exists %} [Gruppi: {% for g in child.gruppi_autorizzati.all %}{{ g.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}]{% else %} [Pubblico]{% endif %}{% if child.is_dropdown %}{% for grandchild in child._figli_filtered %}
+    ├─ {{ grandchild.titolo }} ({{ grandchild.get_url }}){% if grandchild.gruppi_autorizzati.exists %} [Gruppi: {% for g in grandchild.gruppi_autorizzati.all %}{{ g.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}]{% else %} [Pubblico]{% endif %}{% endfor %}{% endif %}{% endfor %}{% endif %}
+{% endfor %}</div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="fas fa-exclamation-circle fa-3x text-muted mb-3"></i>
+              <h6 class="text-muted">Nessuna voce di menù visibile per questo utente</h6>
+              <p class="text-muted">
+                Questo può accadere se:
+              </p>
+              <ul class="text-muted text-start">
+                <li>Non ci sono voci di menù create</li>
+                <li>Tutte le voci sono inattive</li>
+                <li>L'utente non ha i permessi per vedere nessuna voce</li>
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Informazioni tecniche -->
+      <div class="preview-container">
+        <div class="preview-header">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>
+            Informazioni Tecniche
+          </h5>
+        </div>
+        <div class="p-3">
+          <div class="row">
+            <div class="col-md-6">
+              <h6>Template Tags Utilizzati:</h6>
+              <ul>
+                <li><code>{% verbatim %}{% render_menu %}{% endverbatim %}</code> - Renderizza il menù completo</li>
+                <li><code>{% verbatim %}{% render_breadcrumb %}{% endverbatim %}</code> - Renderizza il breadcrumb</li>
+                <li><code>{% verbatim %}{% load menu_tags %}{% endverbatim %}</code> - Carica i template tags</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <h6>Personalizzazione:</h6>
+              <ul>
+                <li>Modifica <code>menu_dynamic.html</code> per cambiare l'aspetto</li>
+                <li>I CSS sono inclusi nel template per facilità</li>
+                <li>Supporta Font Awesome e Bootstrap Icons</li>
+                <li>Menu responsive con dropdown automatici</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <h6>Integrazione in base.html:</h6>
+            <pre class="bg-light p-3 rounded"><code>{% verbatim %}{% load menu_tags %}
+
+<!-- Sostituisci la tua topstrip esistente con: -->
+{% render_menu %}
+
+<!-- Oppure usa solo il breadcrumb: -->
+{% render_breadcrumb %}{% endverbatim %}</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

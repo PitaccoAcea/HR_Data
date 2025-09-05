@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+.form-section {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin-bottom: 20px;
+}
+
+.section-header {
+  background-color: #f8f9fa;
+  padding: 15px 20px;
+  border-bottom: 1px solid #ddd;
+  border-radius: 8px 8px 0 0;
+}
+
+.section-body {
+  padding: 20px;
+}
+
+.icon-preview {
+  margin-left: 10px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.url-examples {
+  font-size: 0.9em;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 4px;
+  background: #f8f9fa;
+}
+
+.group-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.group-checkbox input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.preview-card {
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 4px;
+  padding: 15px;
+}
+
+.btn-back {
+  margin-right: 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+          <i class="fas {% if voce %}fa-edit{% else %}fa-plus{% endif %} me-2"></i>
+          {{ page_title }}
+        </h1>
+        <a href="{% url 'menu_gestione' %}" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Torna al Menù
+        </a>
+      </div>
+
+      <form method="post" id="menu-form">
+        {% csrf_token %}
+
+        <!-- Informazioni Base -->
+        <div class="form-section">
+          <div class="section-header">
+            <h5 class="mb-0">
+              <i class="fas fa-info-circle me-2"></i>
+              Informazioni Base
+            </h5>
+          </div>
+          <div class="section-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="titolo" class="form-label">
+                    <i class="fas fa-tag"></i> Titolo *
+                  </label>
+                  <input type="text" 
+                         class="form-control" 
+                         id="titolo" 
+                         name="titolo" 
+                         value="{{ voce.titolo|default:'' }}" 
+                         required maxlength="100"
+                         placeholder="Es: Dashboard, Utenti, Rapporti...">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="ordine" class="form-label">
+                    <i class="fas fa-sort-numeric-down"></i> Ordine
+                  </label>
+                  <input type="number" 
+                         class="form-control" 
+                         id="ordine" 
+                         name="ordine" 
+                         value="{{ voce.ordine|default:0 }}" 
+                         min="0"
+                         placeholder="0">
+                  <div class="form-text">0 = primo elemento</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="url" class="form-label">
+                <i class="fas fa-link"></i> URL *
+              </label>
+              <div class="input-group">
+                <input type="text" 
+                       class="form-control" 
+                       id="url" 
+                       name="url" 
+                       value="{{ voce.url|default:'' }}" 
+                       required maxlength="255"
+                       placeholder="Es: /, /utenti/, https://example.com, app:view_name">
+                <button type="button" class="btn btn-outline-info" id="test-url">
+                  <i class="fas fa-external-link-alt"></i> Test
+                </button>
+              </div>
+              <div class="url-examples">
+                <strong>Esempi:</strong><br>
+                • URL relativo: <code>/dashboard/</code><br>
+                • URL assoluto: <code>https://www.google.com</code><br>
+                • Nome view Django: <code>accounts:user_list</code><br>
+                • Placeholder: <code>#</code> (per voci con sottomenù)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aspetto e Gerarchia -->
+        <div class="form-section">
+          <div class="section-header">
+            <h5 class="mb-0">
+              <i class="fas fa-palette me-2"></i>
+              Aspetto e Gerarchia
+            </h5>
+          </div>
+          <div class="section-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="icona" class="form-label">
+                    <i class="fas fa-icons"></i> Icona
+                  </label>
+                  <div class="input-group">
+                    <input type="text" 
+                           class="form-control" 
+                           id="icona" 
+                           name="icona" 
+                           value="{{ voce.icona|default:'' }}" 
+                           maxlength="50"
+                           placeholder="Es: fas fa-home, bi-house">
+                    <span class="input-group-text icon-preview" id="icon-preview">
+                      {% if voce.icona %}{{ voce.get_icona_html|safe }}{% endif %}
+                    </span>
+                  </div>
+                  <div class="form-text">
+                    Font Awesome: <code>fas fa-home</code> | Bootstrap Icons: <code>bi-house</code>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="id_padre" class="form-label">
+                    <i class="fas fa-sitemap"></i> Voce Padre
+                  </label>
+                  <select class="form-select" id="id_padre" name="id_padre">
+                    <option value="">Nessuna (voce di primo livello)</option>
+                    {% for padre in possibili_padri %}
+                      <option value="{{ padre.id }}" 
+                              {% if voce.id_padre.id == padre.id %}selected{% endif %}>
+                        {{ padre.titolo }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Seleziona per creare un sottomenù</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Autorizzazioni -->
+        <div class="form-section">
+          <div class="section-header">
+            <h5 class="mb-0">
+              <i class="fas fa-shield-alt me-2"></i>
+              Autorizzazioni
+            </h5>
+          </div>
+          <div class="section-body">
+            <div class="mb-3">
+              <label class="form-label">
+                <i class="fas fa-users"></i> Gruppi Autorizzati
+              </label>
+              <div class="form-text mb-3">
+                Seleziona i gruppi che possono vedere questa voce. 
+                Se non selezioni nessun gruppo, sarà visibile a tutti gli utenti autenticati.
+              </div>
+              
+              {% if gruppi %}
+                <div class="groups-grid">
+                  {% for gruppo in gruppi %}
+                    <div class="group-checkbox">
+                      <input type="checkbox" 
+                             name="gruppi_autorizzati" 
+                             value="{{ gruppo.id }}" 
+                             id="gruppo_{{ gruppo.id }}"
+                             {% if voce and gruppo in voce.gruppi_autorizzati.all %}checked{% endif %}>
+                      <label for="gruppo_{{ gruppo.id }}">
+                        {{ gruppo.nome }}
+                        {% if gruppo.descrizione %}
+                          <small class="text-muted d-block">{{ gruppo.descrizione }}</small>
+                        {% endif %}
+                      </label>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="alert alert-warning">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  Nessun gruppo disponibile. Tutti gli utenti autenticati potranno vedere questa voce.
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check form-switch">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="attivo" 
+                       name="attivo" 
+                       {% if not voce or voce.attivo %}checked{% endif %}>
+                <label class="form-check-label" for="attivo">
+                  <i class="fas fa-toggle-on"></i> Voce Attiva
+                </label>
+              </div>
+              <div class="form-text">Deseleziona per nascondere temporaneamente la voce</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div class="form-section">
+          <div class="section-header">
+            <h5 class="mb-0">
+              <i class="fas fa-sticky-note me-2"></i>
+              Note e Anteprima
+            </h5>
+          </div>
+          <div class="section-body">
+            <div class="mb-3">
+              <label for="note" class="form-label">
+                <i class="fas fa-comment"></i> Note Interne
+              </label>
+              <textarea class="form-control" 
+                        id="note" 
+                        name="note" 
+                        rows="3"
+                        placeholder="Note per la gestione interna...">{{ voce.note|default:'' }}</textarea>
+              <div class="form-text">Queste note sono solo per uso interno e non vengono mostrate agli utenti</div>
+            </div>
+
+            <!-- Anteprima -->
+            <div class="preview-card">
+              <h6><i class="fas fa-eye"></i> Anteprima:</h6>
+              <div id="menu-preview">
+                <a href="#" class="text-decoration-none">
+                  <span id="preview-icon"></span>
+                  <span id="preview-title">Titolo Voce</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pulsanti -->
+        <div class="d-flex justify-content-between">
+          <a href="{% url 'menu_gestione' %}" class="btn btn-secondary btn-back">
+            <i class="fas fa-times"></i> Annulla
+          </a>
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-save"></i> 
+            {% if voce %}Aggiorna Voce{% else %}Crea Voce{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const iconaInput = document.getElementById('icona');
+    const iconPreview = document.getElementById('icon-preview');
+    const titoloInput = document.getElementById('titolo');
+    const previewTitle = document.getElementById('preview-title');
+    const previewIcon = document.getElementById('preview-icon');
+    const testUrlBtn = document.getElementById('test-url');
+    const urlInput = document.getElementById('url');
+
+    // Aggiorna anteprima icona
+    function updateIconPreview() {
+        const iconClass = iconaInput.value.trim();
+        if (iconClass) {
+            let iconHtml = '';
+            if (iconClass.startsWith('fas ') || iconClass.startsWith('far ') || 
+                iconClass.startsWith('fab ') || iconClass.startsWith('fal ')) {
+                iconHtml = `<i class="${iconClass}"></i>`;
+            } else if (iconClass.startsWith('fa-')) {
+                iconHtml = `<i class="fas ${iconClass}"></i>`;
+            } else if (iconClass.startsWith('bi-')) {
+                iconHtml = `<i class="bi ${iconClass}"></i>`;
+            } else {
+                iconHtml = `<i class="${iconClass}"></i>`;
+            }
+            iconPreview.innerHTML = iconHtml;
+            previewIcon.innerHTML = iconHtml + ' ';
+        } else {
+            iconPreview.innerHTML = '';
+            previewIcon.innerHTML = '';
+        }
+    }
+
+    // Aggiorna anteprima titolo
+    function updateTitlePreview() {
+        const title = titoloInput.value.trim() || 'Titolo Voce';
+        previewTitle.textContent = title;
+    }
+
+    // Test URL
+    function testUrl() {
+        const url = urlInput.value.trim();
+        if (!url || url === '#') {
+            alert('Inserisci un URL valido da testare');
+            return;
+        }
+
+        try {
+            // Se è un URL assoluto, aprilo in una nuova finestra
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                window.open(url, '_blank');
+            } else if (url.startsWith('/')) {
+                // URL relativo
+                window.open(window.location.origin + url, '_blank');
+            } else {
+                alert('URL di tipo Django view - non testabile direttamente');
+            }
+        } catch (e) {
+            alert('URL non valido: ' + e.message);
+        }
+    }
+
+    // Event listeners
+    iconaInput.addEventListener('input', updateIconPreview);
+    titoloInput.addEventListener('input', updateTitlePreview);
+    testUrlBtn.addEventListener('click', testUrl);
+
+    // Inizializza anteprima
+    updateIconPreview();
+    updateTitlePreview();
+
+    // Validazione form
+    document.getElementById('menu-form').addEventListener('submit', function(e) {
+        const titolo = titoloInput.value.trim();
+        const url = urlInput.value.trim();
+
+        if (!titolo) {
+            e.preventDefault();
+            alert('Il titolo è obbligatorio');
+            titoloInput.focus();
+            return;
+        }
+
+        if (!url) {
+            e.preventDefault();
+            alert('L\'URL è obbligatorio');
+            urlInput.focus();
+            return;
+        }
+
+        // Conferma se l'URL è un placeholder
+        if (url === '#') {
+            if (!confirm('Hai inserito "#" come URL. Questa voce sarà utilizzabile solo come contenitore per sottovoci. Continuare?')) {
+                e.preventDefault();
+                urlInput.focus();
+                return;
+            }
+        }
+    });
+
+    // Auto-suggest per icone comuni
+    const commonIcons = [
+        'fas fa-home', 'fas fa-user', 'fas fa-users', 'fas fa-cog', 'fas fa-chart-bar',
+        'fas fa-file', 'fas fa-folder', 'fas fa-edit', 'fas fa-trash', 'fas fa-plus',
+        'fas fa-minus', 'fas fa-search', 'fas fa-filter', 'fas fa-download', 'fas fa-upload',
+        'bi-house', 'bi-person', 'bi-people', 'bi-gear', 'bi-bar-chart',
+        'bi-file-text', 'bi-folder', 'bi-pencil', 'bi-trash', 'bi-plus'
+    ];
+
+    // Aggiungi datalist per autocompletamento icone
+    const datalist = document.createElement('datalist');
+    datalist.id = 'common-icons';
+    commonIcons.forEach(icon => {
+        const option = document.createElement('option');
+        option.value = icon;
+        datalist.appendChild(option);
+    });
+    document.body.appendChild(datalist);
+    iconaInput.setAttribute('list', 'common-icons');
+});
+</script>
+{% endblock %}

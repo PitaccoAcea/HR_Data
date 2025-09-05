@@ -1,0 +1,22 @@
+{% load menu_tags %}
+
+<!-- Template ricorsivo per i dropdown del menù -->
+{% for child in children %}
+  <a href="{{ child.get_url }}" 
+     class="dropdown-item menu-level-{{ level }} {% if child.is_dropdown %}has-submenu{% endif %}">
+    {% if child.icona %}
+      {{ child.icona|menu_icon_html|safe }}
+    {% endif %}
+    {{ child.titolo }}
+    {% if child.is_dropdown %}
+      <span class="submenu-arrow">▶</span>
+    {% endif %}
+  </a>
+  
+  {% if child.is_dropdown %}
+    <!-- Sottomenù ricorsivo -->
+    <div class="submenu-container level-{{ level }}">
+      {% include 'accounts/menu_dropdown_recursive.html' with children=child._figli_filtered level=level|add:1 %}
+    </div>
+  {% endif %}
+{% endfor %}

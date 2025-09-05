@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+.delete-card {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dc3545;
+  box-shadow: 0 4px 6px rgba(220, 53, 69, 0.1);
+}
+
+.delete-header {
+  background-color: #dc3545;
+  color: white;
+  padding: 20px;
+  border-radius: 8px 8px 0 0;
+  text-align: center;
+}
+
+.delete-body {
+  padding: 30px;
+}
+
+.voce-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.voce-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.voce-detail:last-child {
+  border-bottom: none;
+}
+
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.children-list {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-lg-6 mx-auto">
+      <div class="delete-card">
+        <div class="delete-header">
+          <h1>
+            <i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>
+            {{ page_title }}
+          </h1>
+        </div>
+
+        <div class="delete-body">
+          <p class="text-center lead">
+            Sei sicuro di voler eliminare questa voce di menù?
+          </p>
+
+          <!-- Informazioni sulla voce -->
+          <div class="voce-info">
+            <h5>
+              <i class="fas fa-info-circle me-2"></i>
+              Informazioni Voce
+            </h5>
+            
+            <div class="voce-detail">
+              <strong>Titolo:</strong>
+              <span>
+                {% if voce.icona %}
+                  {{ voce.get_icona_html|safe }}
+                {% endif %}
+                {{ voce.titolo }}
+              </span>
+            </div>
+
+            <div class="voce-detail">
+              <strong>URL:</strong>
+              <span><code>{{ voce.url }}</code></span>
+            </div>
+
+            {% if voce.id_padre %}
+            <div class="voce-detail">
+              <strong>Voce Padre:</strong>
+              <span>{{ voce.id_padre.titolo }}</span>
+            </div>
+            {% endif %}
+
+            <div class="voce-detail">
+              <strong>Ordine:</strong>
+              <span>{{ voce.ordine }}</span>
+            </div>
+
+            <div class="voce-detail">
+              <strong>Stato:</strong>
+              <span>
+                {% if voce.attivo %}
+                  <span class="badge bg-success">Attivo</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inattivo</span>
+                {% endif %}
+              </span>
+            </div>
+
+            {% if voce.gruppi_autorizzati.exists %}
+            <div class="voce-detail">
+              <strong>Gruppi Autorizzati:</strong>
+              <span>
+                {% for gruppo in voce.gruppi_autorizzati.all %}
+                  <span class="badge bg-primary me-1">{{ gruppo.nome }}</span>
+                {% endfor %}
+              </span>
+            </div>
+            {% else %}
+            <div class="voce-detail">
+              <strong>Visibilità:</strong>
+              <span><span class="badge bg-secondary">Pubblico</span></span>
+            </div>
+            {% endif %}
+
+            {% if voce.note %}
+            <div class="voce-detail">
+              <strong>Note:</strong>
+              <span>{{ voce.note }}</span>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Avviso per voci con figli -->
+          {% if voce.figli.exists %}
+          <div class="warning-box">
+            <h6>
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              Attenzione: Questa voce ha delle sottovoci!
+            </h6>
+            <p class="mb-2">
+              Non puoi eliminare questa voce perché contiene le seguenti sottovoci:
+            </p>
+            <div class="children-list">
+              {% for figlio in voce.figli.all %}
+                <div>
+                  <i class="fas fa-arrow-right me-2"></i>
+                  {% if figlio.icona %}
+                    {{ figlio.get_icona_html|safe }}
+                  {% endif %}
+                  <strong>{{ figlio.titolo }}</strong>
+                  <small class="text-muted">({{ figlio.url }})</small>
+                </div>
+              {% endfor %}
+            </div>
+            <div class="mt-3">
+              <strong>Prima di eliminare questa voce:</strong>
+              <ul class="mb-0">
+                <li>Elimina tutte le sottovoci, oppure</li>
+                <li>Sposta le sottovoci sotto un'altra voce padre</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Pulsanti per voci con figli -->
+          <div class="d-flex justify-content-center gap-3">
+            <a href="{% url 'menu_gestione' %}" class="btn btn-secondary">
+              <i class="fas fa-arrow-left"></i> Torna alla Gestione
+            </a>
+          </div>
+
+          {% else %}
+
+          <!-- Conferma eliminazione per voci senza figli -->
+          <div class="alert alert-danger">
+            <h6>
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              Questa azione è irreversibile!
+            </h6>
+            <p class="mb-0">
+              Una volta eliminata, la voce non potrà essere recuperata.
+              Dovrai ricrearla manualmente se necessario.
+            </p>
+          </div>
+
+          <form method="post" id="delete-form">
+            {% csrf_token %}
+            <div class="d-flex justify-content-center gap-3">
+              <a href="{% url 'menu_gestione' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Annulla
+              </a>
+              <button type="submit" class="btn btn-danger" id="confirm-delete">
+                <i class="fas fa-trash"></i> Elimina Definitivamente
+              </button>
+            </div>
+          </form>
+
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteForm = document.getElementById('delete-form');
+    const confirmBtn = document.getElementById('confirm-delete');
+
+    if (deleteForm && confirmBtn) {
+        let confirmed = false;
+
+        confirmBtn.addEventListener('click', function(e) {
+            if (!confirmed) {
+                e.preventDefault();
+                
+                // Primo click - cambia il pulsante per richiedere conferma
+                confirmBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Clicca di nuovo per confermare';
+                confirmBtn.classList.remove('btn-danger');
+                confirmBtn.classList.add('btn-warning');
+                
+                confirmed = true;
+
+                // Reset dopo 3 secondi se non clicca
+                setTimeout(() => {
+                    if (confirmed) {
+                        confirmBtn.innerHTML = '<i class="fas fa-trash"></i> Elimina Definitivamente';
+                        confirmBtn.classList.remove('btn-warning');
+                        confirmBtn.classList.add('btn-danger');
+                        confirmed = false;
+                    }
+                }, 3000);
+            }
+            // Secondo click - procede con l'eliminazione
+        });
+
+        // Conferma con dialog per maggiore sicurezza
+        deleteForm.addEventListener('submit', function(e) {
+            if (!confirm('ULTIMA CONFERMA: Sei veramente sicuro di voler eliminare "{{ voce.titolo }}"?\n\nQuesta azione NON può essere annullata!')) {
+                e.preventDefault();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

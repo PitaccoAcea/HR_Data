@@ -17,9 +17,15 @@
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
 
+    <!-- Font Awesome (per le icone del menù) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+
     {% load static %}
+    {% load menu_tags %}
     <link rel="stylesheet" href="{% static 'css/theme.css' %}">
   </head>
+  
   <body>
 
     {# ==================== HEADER BIANCO (logo + titolo) =================== #}
@@ -38,26 +44,23 @@
     </div>
 
     {# ==================== BARRA TEAL (menu + utente) ====================== #}
-    <div class="topstrip">
-      <div class="topstrip-inner">
-        <ul class="breadcrumb-menu">
-          {# Voci di esempio (in futuro popoleremo da DB) #}
-          <li><a href="/">Home</a> <span class="sep">›</span></li>
-          <li><a href="/accounts/info-utenti/">Utenti</a> <span class="sep">›</span></li>
-          <li><a href="#">Link2</a> <span class="sep">›</span></li>
-        </ul>
+    
 
-        <div class="user-area">
-          {% if request.user.is_authenticated %}
-            {% with request.user.username|cut:"TI\\" as nome_utente %}
-              👤 {{ nome_utente }}
-            {% endwith %}
-          {% else %}
-            👤 Utente non autenticato
-          {% endif %}
+    <!-- Menù dinamico -->
+    {% render_menu %}
+    
+    <!-- Messaggi Django -->
+    {% if messages %}
+    <div class="container-fluid mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-triangle{% elif message.tags == 'warning' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-      </div>
+        {% endfor %}
     </div>
+    {% endif %}
 
     {# ==================== CONTENUTO PAGINA ================================ #}
     <main class="page">

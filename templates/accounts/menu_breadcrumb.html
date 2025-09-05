@@ -1,0 +1,29 @@
+{% load menu_tags %}
+
+<!-- Breadcrumb basato sul menù dinamico -->
+<ul class="breadcrumb-menu">
+  {% for item in breadcrumb %}
+    <li>
+      {% if not forloop.last %}
+        <a href="{{ item.get_url }}">
+          {% if item.icona %}
+            {{ item.icona|menu_icon_html|safe }}
+          {% endif %}
+          {{ item.titolo }}
+        </a>
+        <span class="sep">›</span>
+      {% else %}
+        <!-- Ultimo elemento del breadcrumb (pagina corrente) -->
+        <span class="current-page">
+          {% if item.icona %}
+            {{ item.icona|menu_icon_html|safe }}
+          {% endif %}
+          {{ item.titolo }}
+        </span>
+      {% endif %}
+    </li>
+  {% empty %}
+    <!-- Fallback se non trova la pagina nel menù -->
+    <li><a href="/">Home</a></li>
+  {% endfor %}
+</ul>
